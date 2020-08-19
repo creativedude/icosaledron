@@ -60,6 +60,15 @@ Input vectors receive computed results from FFT
 // fft\\ #define SCL_FREQUENCY 0x02
 // fft\\ #define SCL_PLOT 0x03
 
+//wifi stuff
+WiFiServer server(80);
+
+
+String responseHTML = ""
+  "<!DOCTYPE html><html><head><title>CaptivePortal</title></head><body>"
+  "<h1>Hello World!</h1><p>This is a captive portal example. All requests will "
+  "be redirected here.</p></body></html>";
+
 
 
 void setup() {
@@ -72,6 +81,7 @@ void setup() {
   Serial.print("local IP address: ");
   Serial.println(WiFi.softAPIP());
 
+  server.begin();
   // Port defaults to 3232
   ArduinoOTA.setPort(3232);
   // led setup
@@ -144,11 +154,38 @@ void Task1code( void * pvParameters ){
   for(;;){
     knob1Val = analogRead(Knob1);
     knob2Val = analogRead(Knob2);
-
+  delay(500);
+  Serial.println("running core 0");
     if ((knob1Val == 4095 && knob2Val == 4095) || otaMode == 1) {
        ArduinoOTA.handle();
     } else {
+      
       // run the server
+      //dnsServer.processNextRequest();
+      WiFiClient client = server.available();   // listen for incoming clients
+
+      if (client) {
+        String currentLine = "";
+        while (client.connected()) {
+          if (client.available()) {
+            char c = client.read();
+            if (c == '\n') {
+              if (currentLine.length() == 0) {
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type:text/html");
+                client.println();
+                client.print(responseHTML);
+                break;
+              } else {
+                currentLine = "";
+              }
+            } else if (c != '\r') {
+              currentLine += c;
+            }
+          }
+        }
+        client.stop();
+      }
     }
   } 
 }
@@ -186,5 +223,5 @@ void runningLight() {
         delay(30);
     }
     s = 255;
-    v = 200;
+    v = 250;
 }
